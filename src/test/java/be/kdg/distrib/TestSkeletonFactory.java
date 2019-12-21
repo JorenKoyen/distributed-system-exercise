@@ -61,38 +61,38 @@ public class TestSkeletonFactory {
         assertEquals("Ok", reply.getParameter("result"));
     }
 
-//    private interface MyLambda {
-//        boolean operator();
-//    }
-//
-//    private void waitUntil(int timeoutmsec, MyLambda l) {
-//        long endTime = System.currentTimeMillis()+timeoutmsec;
-//        while(System.currentTimeMillis()<endTime) {
-//            boolean b = l.operator();
-//            if (b) return;
-//        }
-//        throw new RuntimeException("timeout!");
-//    }
-//
-//    @Test(timeout = 1000)
-//    public void testRunMethodSpawnThread() {
-//        int numberOfThreads = Thread.getAllStackTraces().keySet().size();
-//        skeleton.run();
-//        int newNumber = Thread.getAllStackTraces().keySet().size();
-//        assertEquals("run method should create new thread", numberOfThreads+1, newNumber);
-//    }
-//
-//    @Test(timeout = 1000)
-//    public void testRunMethodOneRequest() {
-//        skeleton.run();
-//        MethodCallMessage message = new MethodCallMessage(myAddress, "testMethod1");
-//        messageManager.send(message, skeleton.getAddress());
-//        waitUntil(1000, () -> "void".equals(testImplementation.getS()));
-//        MethodCallMessage reply = messageManager.wReceive();
-//        assertNotNull(reply.getParameter("result"));
-//        assertEquals("Ok", reply.getParameter("result"));
-//    }
-//
+    private interface MyLambda {
+        boolean operator();
+    }
+
+    private void waitUntil(int timeoutmsec, MyLambda l) {
+        long endTime = System.currentTimeMillis()+timeoutmsec;
+        while(System.currentTimeMillis()<endTime) {
+            boolean b = l.operator();
+            if (b) return;
+        }
+        throw new RuntimeException("timeout!");
+    }
+
+    @Test()
+    public void testRunMethodSpawnThread() throws InterruptedException {
+        int numberOfThreads = Thread.getAllStackTraces().keySet().size();
+        skeleton.run();
+        int newNumber = Thread.getAllStackTraces().keySet().size();
+        assertEquals("run method should create new thread", numberOfThreads+1, newNumber);
+    }
+
+    @Test(timeout = 1000)
+    public void testRunMethodOneRequest() {
+        skeleton.run();
+        MethodCallMessage message = new MethodCallMessage(myAddress, "testMethod1");
+        messageManager.send(message, skeleton.getAddress());
+        waitUntil(1000, () -> "void".equals(testImplementation.getS()));
+        MethodCallMessage reply = messageManager.wReceive();
+        assertNotNull(reply.getParameter("result"));
+        assertEquals("Ok", reply.getParameter("result"));
+    }
+
 //    @Test(timeout = 1000)
 //    public void testRunMethodMultipleRequests() {
 //        skeleton.run();

@@ -29,8 +29,13 @@ public class SkeletonHandler implements Skeleton {
 
     @Override
     public void run() {
+        // create new thread that runs listen method
+        Thread thread = new Thread(this::listen);
 
+        // start new thread
+        thread.start();
     }
+
 
     @Override
     public NetworkAddress getAddress() {
@@ -39,7 +44,7 @@ public class SkeletonHandler implements Skeleton {
 
     @Override
     public void handleRequest(MethodCallMessage message) {
-        LOGGER.info("handling method call '%s' for implementation '%s'",
+        LOGGER.info("Handling method call '%s' for implementation '%s'",
                 message.getMethodName(), this.implementation.getClass().getSimpleName());
 
         try {
@@ -47,6 +52,7 @@ public class SkeletonHandler implements Skeleton {
             // get invoked method
             Method method = this.methodMap.get(message.getMethodName());
             if (method == null) {
+                LOGGER.error("Method with name '%s' has not been found", message.getMethodName());
                 throw new IllegalArgumentException("Invalid method has been invoked");
             }
 
@@ -72,6 +78,30 @@ public class SkeletonHandler implements Skeleton {
 
 
     // -- HELPER METHODS -------------------
+    private void listen() {
+        // TODO: (optional) allow for graceful shutdown of thread
+
+        if (this.implementation == null) {
+            LOGGER.error("Implementation can not be null");
+            return; // stops thread
+        }
+
+        LOGGER.info("Started listening on %s for implementation '%s'",
+                this.networkAddress.toString(),
+                this.implementation.getClass().getSimpleName());
+
+        // start listening loop
+        while (true) {
+
+            // wait for request - synchronous
+            MethodCallMessage request = this.messageManager.wReceive();
+
+            // handle request
+            this.handleRequest(request);
+        }
+
+    }
+
     private MethodCallMessage constructResponse(Method method, Object returnValue) throws IllegalAccessException {
         MethodCallMessage response = new MethodCallMessage(this.networkAddress, "result");
 
