@@ -11,7 +11,7 @@ package be.kdg.distrib.communication;
  * Convenience class to represent a pair of a name and a value.
  * Implemented as an immutable class.
  */
-public final class NameValuePair {
+final class NameValuePair {
     private final String name;
     private final String value;
 

@@ -1,19 +1,14 @@
 package be.kdg.distrib.util;
 
 import be.kdg.distrib.communication.MethodCallMessage;
-import be.kdg.distrib.communication.NameValuePair;
 import be.kdg.distrib.communication.NetworkAddress;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 import static be.kdg.distrib.util.PrimitiveUtils.isSimpleType;
-import static be.kdg.distrib.util.PrimitiveUtils.isWrappper;
 
 public class InvocationFormatter {
 
@@ -29,10 +24,10 @@ public class InvocationFormatter {
         MethodCallMessage methodCallMessage = new MethodCallMessage(origin, method.getName());
 
         // get all mapped arguments
-        List<NameValuePair> arguments = mapArgs(method.getParameters(), args);
+        Map<String, String> arguments = mapArgs(method.getParameters(), args);
 
         // add arguments to method call message
-        arguments.forEach(pair -> methodCallMessage.setParameter(pair.getName(), pair.getValue()));
+        arguments.forEach(methodCallMessage::setParameter);
 
         // return method call message
         return methodCallMessage;
@@ -47,22 +42,22 @@ public class InvocationFormatter {
      * @return A list of NameValuePairs
      * @throws IllegalAccessException Thrown when the length of the parameters do not match the length of the arguments
      */
-    private static List<NameValuePair> mapArgs(Parameter[] parameters, Object[] args) throws IllegalAccessException {
+    private static Map<String, String> mapArgs(Parameter[] parameters, Object[] args) throws IllegalAccessException {
         // return empty list if no params or args
-        if (parameters == null || args == null) return Collections.emptyList();
+        if (parameters == null || args == null) return Collections.emptyMap();
 
         // check if amount of params matches amount of args
         if (parameters.length != args.length)
             throw new IllegalArgumentException("The amount of parameters expected and arguments passed does not match");
 
         // map arguments to name value pairs
-        List<NameValuePair> pairs = new ArrayList<>();
+        Map<String, String> pairs = new HashMap<>();
         for (int i = 0; i < args.length; i++) {
             Parameter p = parameters[i];
             Object o = args[i];
 
             // encode object and add to pairs
-            pairs.addAll(encodeObjectAsPairs(p.getName(), o));
+            pairs.putAll(encodeObjectAsPairs(p.getName(), o));
         }
 
         // return name value pairs
@@ -78,17 +73,17 @@ public class InvocationFormatter {
      * @return Returns a list of NameValuePairs
      * @throws IllegalAccessException Thrown when unable to access the getter of a specific field
      */
-    private static List<NameValuePair> encodeObjectAsPairs(String baseName, Object object) throws IllegalAccessException {
+    private static Map<String, String> encodeObjectAsPairs(String baseName, Object object) throws IllegalAccessException {
         // return single name value pair if object is a primitive or wrapper type
         if (isSimpleType(object.getClass())) {
-            return Collections.singletonList(new NameValuePair(baseName, String.valueOf(object)));
+            return Map.of(baseName, String.valueOf(object));
         }
 
         // get fields of non primitive object
         Field[] fields = object.getClass().getDeclaredFields();
 
         // loop over fields in non primitive object
-        List<NameValuePair> pairs = new ArrayList<>();
+        Map<String, String> pairs = new HashMap<>();
         for (Field f : fields) {
 
             // make field accessible
@@ -96,7 +91,7 @@ public class InvocationFormatter {
 
             // use recursion to get nested objects
             String extendedBaseName = baseName + "." + f.getName();
-            pairs.addAll(encodeObjectAsPairs(extendedBaseName, f.get(object)));
+            pairs.putAll(encodeObjectAsPairs(extendedBaseName, f.get(object)));
 
         }
 
