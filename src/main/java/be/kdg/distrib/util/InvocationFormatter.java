@@ -33,6 +33,40 @@ public class InvocationFormatter {
         return methodCallMessage;
     }
 
+    /**
+     * Encodes an a single object to a list of NameValuePairs with the basename as their
+     * key value. Complex objects are mapped under the same basename but also use the name of the
+     * field as their identifier. (Keeps encoding until a wrapper class or primitive type is found)
+     * @param baseName Name used as key value
+     * @param object Object that must be encoded
+     * @return Returns a list of NameValuePairs
+     * @throws IllegalAccessException Thrown when unable to access the getter of a specific field
+     */
+    public static Map<String, String> encodeObjectAsPairs(String baseName, Object object) throws IllegalAccessException {
+        // return single name value pair if object is a primitive or wrapper type
+        if (isSimpleType(object.getClass())) {
+            return Map.of(baseName, String.valueOf(object));
+        }
+
+        // get fields of non primitive object
+        Field[] fields = object.getClass().getDeclaredFields();
+
+        // loop over fields in non primitive object
+        Map<String, String> pairs = new HashMap<>();
+        for (Field f : fields) {
+
+            // make field accessible
+            f.setAccessible(true);
+
+            // use recursion to get nested objects
+            String extendedBaseName = baseName + "." + f.getName();
+            pairs.putAll(encodeObjectAsPairs(extendedBaseName, f.get(object)));
+
+        }
+
+        return pairs;
+    }
+
     // == PRIVATE METHODS ============================
     /**
      * Maps arguments and parameters as name value pairs, by using the parameter name as key
@@ -61,40 +95,6 @@ public class InvocationFormatter {
         }
 
         // return name value pairs
-        return pairs;
-    }
-
-    /**
-     * Encodes an a single object to a list of NameValuePairs with the basename as their
-     * key value. Complex objects are mapped under the same basename but also use the name of the
-     * field as their identifier. (Keeps encoding until a wrapper class or primitive type is found)
-     * @param baseName Name used as key value
-     * @param object Object that must be encoded
-     * @return Returns a list of NameValuePairs
-     * @throws IllegalAccessException Thrown when unable to access the getter of a specific field
-     */
-    private static Map<String, String> encodeObjectAsPairs(String baseName, Object object) throws IllegalAccessException {
-        // return single name value pair if object is a primitive or wrapper type
-        if (isSimpleType(object.getClass())) {
-            return Map.of(baseName, String.valueOf(object));
-        }
-
-        // get fields of non primitive object
-        Field[] fields = object.getClass().getDeclaredFields();
-
-        // loop over fields in non primitive object
-        Map<String, String> pairs = new HashMap<>();
-        for (Field f : fields) {
-
-            // make field accessible
-            f.setAccessible(true);
-
-            // use recursion to get nested objects
-            String extendedBaseName = baseName + "." + f.getName();
-            pairs.putAll(encodeObjectAsPairs(extendedBaseName, f.get(object)));
-
-        }
-
         return pairs;
     }
 

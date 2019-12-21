@@ -1,0 +1,104 @@
+package be.kdg.distrib.skeletonFactory;
+
+import be.kdg.distrib.communication.MessageManager;
+import be.kdg.distrib.communication.MethodCallMessage;
+import be.kdg.distrib.communication.NetworkAddress;
+import be.kdg.distrib.logger.Logger;
+import be.kdg.distrib.util.InvocationFormatter;
+import be.kdg.distrib.util.ObjectParser;
+
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.Map;
+
+public class SkeletonHandler implements Skeleton {
+    private final static Logger LOGGER = Logger.getLogger("SkeletonHandler");
+    private final MessageManager messageManager;
+    private final NetworkAddress networkAddress;
+    private final Object implementation;
+    private final Map<String, Method> methodMap;
+
+    // -- CONSTRUCTOR ----------------------
+    public SkeletonHandler(Object implementation) {
+        this.implementation = implementation;
+        this.messageManager = new MessageManager();
+        this.networkAddress = this.messageManager.getMyAddress();
+        this.methodMap = this.createMethodMap();
+    }
+
+    @Override
+    public void run() {
+
+    }
+
+    @Override
+    public NetworkAddress getAddress() {
+        return this.networkAddress;
+    }
+
+    @Override
+    public void handleRequest(MethodCallMessage message) {
+        LOGGER.info("handling method call '%s' for implementation '%s'",
+                message.getMethodName(), this.implementation.getClass().getSimpleName());
+
+        try {
+
+            // get invoked method
+            Method method = this.methodMap.get(message.getMethodName());
+            if (method == null) {
+                throw new IllegalArgumentException("Invalid method has been invoked");
+            }
+
+            // TODO: parse map to arguments and invoke with arguments
+
+            // invoke method and get return value
+            Object returnVal = method.invoke(this.implementation);
+
+            // create response as a method call message
+            MethodCallMessage response = constructResponse(method, returnVal);
+
+            // send response to originator (sync communication)
+            this.messageManager.send(response, message.getOriginator());
+
+
+
+        } catch (IllegalAccessException  | InvocationTargetException e) {
+            LOGGER.error("Unable to invoke method '%s' for implementation '%s'",
+                    message.getMethodName(), this.implementation.getClass().getSimpleName());
+        }
+
+    }
+
+
+    // -- HELPER METHODS -------------------
+    private MethodCallMessage constructResponse(Method method, Object returnValue) throws IllegalAccessException {
+        MethodCallMessage response = new MethodCallMessage(this.networkAddress, "result");
+
+        // differentiate response if void
+        if (method.getReturnType().equals(Void.TYPE)) {
+            response.setParameter("result", "Ok");
+            return response;
+        }
+
+        // construct response based on returnValue
+        Map<String, String> returnParams = InvocationFormatter.encodeObjectAsPairs("result", returnValue);
+        returnParams.forEach(response::setParameter);
+
+        // return response
+        return response;
+    }
+
+    private Map<String, Method> createMethodMap() {
+        Class<?> type = implementation.getClass();
+        Method[] methods = type.getDeclaredMethods();
+        Map<String, Method> map = new HashMap<>();
+
+        // put all methods into a map
+        for (Method m : methods) {
+            map.put(m.getName(), m);
+        }
+
+        return map;
+    }
+}
