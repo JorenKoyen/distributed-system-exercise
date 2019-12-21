@@ -7,7 +7,7 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
 
 public class StubFactory {
-    public static Object createStub(Class stub, String address, int port) {
+    public static Object createStub(Class<?> stub, String address, int port) {
 
         // setup network address for receiving party
         NetworkAddress receiver = new NetworkAddress(address, port);
