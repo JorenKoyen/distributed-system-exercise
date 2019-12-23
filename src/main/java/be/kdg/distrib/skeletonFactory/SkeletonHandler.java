@@ -3,6 +3,7 @@ package be.kdg.distrib.skeletonFactory;
 import be.kdg.distrib.communication.MessageManager;
 import be.kdg.distrib.communication.MethodCallMessage;
 import be.kdg.distrib.communication.NetworkAddress;
+import be.kdg.distrib.exception.ParseException;
 import be.kdg.distrib.logger.Logger;
 import be.kdg.distrib.util.InvocationFormatter;
 import be.kdg.distrib.util.ObjectParser;
@@ -53,13 +54,14 @@ public class SkeletonHandler implements Skeleton {
             Method method = this.methodMap.get(message.getMethodName());
             if (method == null) {
                 LOGGER.error("Method with name '%s' has not been found", message.getMethodName());
-                throw new IllegalArgumentException("Invalid method has been invoked");
+                throw new NullPointerException("No method with name " + message.getMethodName() + " exists for the current implementation");
             }
 
-            // TODO: parse map to arguments and invoke with arguments
+            // parse map to arguments and invoke with arguments
+            Object[] args = InvocationFormatter.formatCallParameters(method.getParameters(), message.getParameters());
 
             // invoke method and get return value
-            Object returnVal = method.invoke(this.implementation);
+            Object returnVal = method.invoke(this.implementation, args);
 
             // create response as a method call message
             MethodCallMessage response = constructResponse(method, returnVal);
@@ -69,9 +71,11 @@ public class SkeletonHandler implements Skeleton {
 
 
 
-        } catch (IllegalAccessException  | InvocationTargetException e) {
+        } catch (IllegalAccessException | InvocationTargetException | ParseException e) {
             LOGGER.error("Unable to invoke method '%s' for implementation '%s'",
                     message.getMethodName(), this.implementation.getClass().getSimpleName());
+            LOGGER.error(e.getMessage());
+            throw new RuntimeException(e.getMessage());
         }
 
     }

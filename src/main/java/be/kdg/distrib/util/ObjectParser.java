@@ -1,5 +1,7 @@
 package be.kdg.distrib.util;
 
+import be.kdg.distrib.exception.ParseException;
+
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -18,7 +20,7 @@ public class ObjectParser {
      * @param args Arguments which map to the corresponding field names
      * @return Object of the type passed as parameter
      */
-    public static Object parse(Class<?> type, Map<String, String> args) throws InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException {
+    public static Object parse(Class<?> type, Map<String, String> args) {
         // return null if type is void
         if (type.equals(Void.TYPE)) return null;
 
@@ -42,7 +44,12 @@ public class ObjectParser {
 
         // +++ complex types +++
         // create instance of complex type
-        Object instance = type.getConstructor().newInstance();
+        Object instance = null;
+        try {
+            instance = type.getConstructor().newInstance();
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+            throw new ParseException("Unable to instantiate new object of type " + type.getSimpleName(), e);
+        }
 
         // get all declared fields of type
         Field[] fields = type.getDeclaredFields();
@@ -58,7 +65,11 @@ public class ObjectParser {
             Object val = parse(f.getType(), fieldKeys);
 
             // set value to field
-            f.set(instance, val);
+            try {
+                f.set(instance, val);
+            } catch (IllegalAccessException e) {
+                throw new ParseException("Unable to set new value to field " + f.getName(), e);
+            }
         }
 
         return instance;
@@ -93,17 +104,26 @@ public class ObjectParser {
      * @param val Value which needs to be parsed
      * @return An object as the passed type
      */
-    private static Object parseSimpleType(Class<?> type, String val) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
+    private static Object parseSimpleType(Class<?> type, String val) {
         // return first character of val if parsed to char
         if (type.equals(Character.class)) return val.toCharArray()[0];
 
-        // get constructor from type with a single string param
-        Constructor<?> ctor = type.getConstructor(String.class);
+        try {
+            // get constructor from type with a single string param
+            Constructor<?> ctor = null;
+            ctor = type.getConstructor(String.class);
 
-        // make constructor accessible
-        ctor.setAccessible(true);
 
-        // return instance of object
-        return ctor.newInstance(val);
+            // make constructor accessible
+            ctor.setAccessible(true);
+
+            // return instance of object
+            return ctor.newInstance(val);
+
+        } catch (NoSuchMethodException | InstantiationException | IllegalAccessException | InvocationTargetException e) {
+            String em = String.format("Unable to parse '%s' to type %s", val, type.getSimpleName());
+            throw new ParseException(em, e);
+        }
+
     }
 }

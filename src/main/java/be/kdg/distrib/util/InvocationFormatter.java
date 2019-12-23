@@ -4,6 +4,7 @@ import be.kdg.distrib.communication.MethodCallMessage;
 import be.kdg.distrib.communication.NetworkAddress;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.*;
@@ -65,6 +66,40 @@ public class InvocationFormatter {
         }
 
         return pairs;
+    }
+
+    public static Object[] formatCallParameters(Parameter[] parameters, Map<String, String> args) {
+        Object[] paramValues = new Object[parameters.length];
+
+
+        int amountOfValuesUsed = 0;
+        for (int i = 0; i < parameters.length; i++) {
+            Parameter p = parameters[i];
+
+            // get all values that start with param name
+            Map<String, String> matchedValues = ObjectParser.getKeysStartingWith(p.getName(), args);
+
+            // throw error if no matched values
+            if (matchedValues.size() == 0)
+                throw new IllegalArgumentException("Arguments lacked certain values to recreate a parameter");
+
+            // parse values into object
+            Object o = ObjectParser.parse(p.getType(), matchedValues);
+
+            // add object to param values
+            paramValues[i] = o;
+
+            // we have used the values, add to counter
+            amountOfValuesUsed += matchedValues.size();
+        }
+
+
+        // check if we have used all arguments provided
+        if (amountOfValuesUsed != args.size())
+            throw new IllegalArgumentException("Excess of values has been passed");
+
+
+        return paramValues;
     }
 
     // == PRIVATE METHODS ============================
